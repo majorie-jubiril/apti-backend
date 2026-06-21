@@ -2,17 +2,34 @@ const express = require("express");
 const router = express.Router();
 const supabase = require("../supabase");
 
+// Helper: look up university_id from api_key
+async function getUniversityId(api_key) {
+  if (!api_key) return null;
+
+  const { data, error } = await supabase
+    .from("universities")
+    .select("id")
+    .eq("api_key", api_key)
+    .eq("is_active", true)
+    .single();
+
+  if (error || !data) return null;
+  return data.id;
+}
+
 // POST /api/results - Save an assessment result
 router.post("/", async (req, res) => {
-  const { personality_type, scores, fits, top_program } = req.body;
+  const { personality_type, scores, fits, top_program, api_key } = req.body;
 
   if (!personality_type || !scores || !fits || !top_program) {
     return res.status(400).json({ error: "Missing required fields" });
   }
 
+  const university_id = await getUniversityId(api_key);
+
   const { data, error } = await supabase
     .from("assessment_results")
-    .insert([{ personality_type, scores, fits, top_program }])
+    .insert([{ personality_type, scores, fits, top_program, university_id }])
     .select();
 
   if (error) {

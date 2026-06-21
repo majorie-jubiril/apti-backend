@@ -13,6 +13,9 @@ app.use(express.json());
 const resultsRouter = require("./routes/results");
 app.use("/api/results", resultsRouter);
 
+const adminRouter = require("./routes/admin");
+app.use("/api/admin", adminRouter);
+
 // Test route
 app.get("/", (req, res) => {
   res.json({ message: "AptiGuide backend is running 🎉" });
