@@ -14,7 +14,9 @@ const resultsRouter = require("./routes/results");
 app.use("/api/results", resultsRouter);
 
 const adminRouter = require("./routes/admin");
+const programsRouter = require("./routes/programs");
 app.use("/api/admin", adminRouter);
+app.use("/api/programs", programsRouter);
 
 // Test route
 app.get("/", (req, res) => {
