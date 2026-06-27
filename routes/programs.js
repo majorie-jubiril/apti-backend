@@ -23,9 +23,13 @@ router.get("/", async (req, res) => {
   const university_id = "0bce6d3a-d356-432f-9968-c2b7489b3337";
   console.log("University ID:", university_id);
 
-  const { data, error } = await supabase
-    .from("programs")
-    .select("*");
+  const response = await supabase
+  .from("programs")
+  .select("*");
+
+  console.log("Full response:", response);
+
+  const { data, error } = response;
 
   console.log("Error:", error);
   console.log("Programs returned:", data);
