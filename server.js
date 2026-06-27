@@ -23,6 +23,9 @@ app.get("/", (req, res) => {
   res.json({ message: "AptiGuide backend is running 🎉" });
 });
 
+console.log("SUPABASE_URL:", process.env.SUPABASE_URL);
+console.log("SUPABASE_KEY exists:", !!process.env.SUPABASE_KEY);
+
 // Start server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
