@@ -62,4 +62,59 @@ router.get("/", async (req, res) => {
   });
 });
 
+// PATCH /api/programs/:id/toggle
+router.patch("/:id/toggle", async (req, res) => {
+
+  const api_key =
+    req.headers["x-api-key"] ||
+    req.query.api_key;
+
+  const university_id =
+    await getUniversityId(api_key);
+
+  if (!university_id) {
+    return res.status(401).json({
+      error: "Invalid university API key."
+    });
+  }
+
+  const { id } = req.params;
+
+  const { data: programme, error: fetchError } =
+    await supabase
+      .from("programs")
+      .select("id, is_active")
+      .eq("id", id)
+      .eq("university_id", university_id)
+      .single();
+
+  if (fetchError || !programme) {
+    return res.status(404).json({
+      error: "Programme not found."
+    });
+  }
+
+  const { data, error } =
+    await supabase
+      .from("programs")
+      .update({
+        is_active: !programme.is_active
+      })
+      .eq("id", id)
+      .eq("university_id", university_id)
+      .select();
+
+  if (error) {
+    return res.status(500).json({
+      error: error.message
+    });
+  }
+
+  res.json({
+    success: true,
+    data
+  });
+
+});
+
 module.exports = router;
