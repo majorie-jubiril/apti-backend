@@ -20,7 +20,11 @@ async function getUniversityId(api_key) {
 
 // GET /api/programs
 router.get("/", async (req, res) => {
-  const api_key = req.headers["x-api-key"];
+  const api_key =
+    req.headers["x-api-key"] ||
+    req.query.api_key;
+
+  console.log("Programs route received API key:", api_key);  
 
   const university_id =
     await getUniversityId(api_key);
