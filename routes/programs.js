@@ -20,12 +20,23 @@ async function getUniversityId(api_key) {
 
 // GET /api/programs
 router.get("/", async (req, res) => {
-  const university_id = "0bce6d3a-d356-432f-9968-c2b7489b3337";
+  const api_key = req.headers["x-api-key"];
+
+  const university_id =
+    await getUniversityId(api_key);
+
+  if (!university_id) {
+    return res.status(401).json({
+      error: "Invalid university API key."
+    });
+  }
   console.log("University ID:", university_id);
 
   const response = await supabase
-  .from("programs")
-  .select("*");
+    .from("programs")
+    .select("*")
+    .eq("university_id", university_id)
+    .order("program_name");
 
   console.log("Full response:", response);
 
