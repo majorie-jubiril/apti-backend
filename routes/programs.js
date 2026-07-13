@@ -117,4 +117,40 @@ router.patch("/:id/toggle", async (req, res) => {
 
 });
 
+// DELETE /api/programs/:id
+router.delete("/:id", async (req, res) => {
+
+  const { id } = req.params;
+
+  const api_key =
+    req.headers["x-api-key"] ||
+    req.query.api_key;
+
+  const university_id =
+    await getUniversityId(api_key);
+
+  if (!university_id) {
+    return res.status(401).json({
+      error: "Invalid university API key."
+    });
+  }
+
+  const { error } = await supabase
+    .from("programs")
+    .delete()
+    .eq("id", id)
+    .eq("university_id", university_id);
+
+  if (error) {
+    return res.status(500).json({
+      error: error.message
+    });
+  }
+
+  res.json({
+    success: true
+  });
+
+});
+
 module.exports = router;
