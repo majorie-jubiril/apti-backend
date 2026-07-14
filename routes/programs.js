@@ -1,213 +1,287 @@
 const express = require("express");
 const router = express.Router();
-const supabase = require("../supabase");
 
-// Helper: look up university_id from api_key
-async function getUniversityId(api_key) {
-  if (!api_key) return null;
-
-  const { data, error } = await supabase
-    .from("universities")
-    .select("id")
-    .eq("api_key", api_key)
-    .eq("is_active", true)
-    .single();
-
-  if (error || !data) return null;
-
-  return data.id;
+function normalizeProgrammeName(name = "") {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
 }
 
-// GET /api/programs
-router.get("/", async (req, res) => {
-  const api_key =
-    req.headers["x-api-key"] ||
-    req.query.api_key;
+  async function evaluateProgrammeSetup(program_name, university_id) {
 
-  console.log("Programs route received API key:", api_key);  
+    const normalizedProgramName =
+      normalizeProgrammeName(program_name);
 
-  const university_id =
-    await getUniversityId(api_key);
+    const { data: existingProgrammes, error } =
+      await supabase
+        .from("programs")
+        .select("program_name")
+        .eq("university_id", university_id);
 
-  if (!university_id) {
-    return res.status(401).json({
-      error: "Invalid university API key."
-    });
-  }
-  console.log("University ID:", university_id);
+    if (error) {
+      throw error;
+    }
 
-  const response = await supabase
-    .from("programs")
-    .select("*")
-    .eq("university_id", university_id)
-    .order("program_name");
+    const duplicateFound =
+      existingProgrammes.some(programme =>
+        normalizeProgrammeName(programme.program_name) ===
+        normalizedProgramName
+      );
 
-  console.log("Full response:", response);
+    if (duplicateFound) {
 
-  const { data, error } = response;
+      return {
 
-  console.log("Error:", error);
-  console.log("Programs returned:", data);
-  console.log("Count:", data?.length);  
+        duplicate: true,
 
-  if (error) {
-    return res.status(500).json({
-      error: error.message
-    });
-  }
+        setup_status: "needs_review",
 
-  res.json({
-    success: true,
-    data
-  });
-});
+        is_active: false
 
-// PATCH /api/programs/:id/toggle
-router.patch("/:id/toggle", async (req, res) => {
+      };
 
-  const api_key =
-    req.headers["x-api-key"] ||
-    req.query.api_key;
+    }
 
-  const university_id =
-    await getUniversityId(api_key);
+    return {
 
-  if (!university_id) {
-    return res.status(401).json({
-      error: "Invalid university API key."
-    });
+      duplicate: false,
+
+      setup_status: "needs_review",
+
+      is_active: false
+
+    };
+
   }
 
-  const { id } = req.params;
+  const supabase = require("../supabase");
 
-  const { data: programme, error: fetchError } =
-    await supabase
-      .from("programs")
-      .select("id, is_active")
-      .eq("id", id)
-      .eq("university_id", university_id)
+  // Helper: look up university_id from api_key
+  async function getUniversityId(api_key) {
+    if (!api_key) return null;
+
+    const { data, error } = await supabase
+      .from("universities")
+      .select("id")
+      .eq("api_key", api_key)
+      .eq("is_active", true)
       .single();
 
-  if (fetchError || !programme) {
-    return res.status(404).json({
-      error: "Programme not found."
-    });
+    if (error || !data) return null;
+
+    return data.id;
   }
 
-  const { data, error } =
-    await supabase
+  // GET /api/programs
+  router.get("/", async (req, res) => {
+    const api_key =
+      req.headers["x-api-key"] ||
+      req.query.api_key;
+
+    console.log("Programs route received API key:", api_key);  
+
+    const university_id =
+      await getUniversityId(api_key);
+
+    if (!university_id) {
+      return res.status(401).json({
+        error: "Invalid university API key."
+      });
+    }
+    console.log("University ID:", university_id);
+
+    const response = await supabase
       .from("programs")
-      .update({
-        is_active: !programme.is_active
-      })
-      .eq("id", id)
+      .select("*")
       .eq("university_id", university_id)
-      .select();
+      .order("program_name");
 
-  if (error) {
-    return res.status(500).json({
-      error: error.message
+    console.log("Full response:", response);
+
+    const { data, error } = response;
+
+    console.log("Error:", error);
+    console.log("Programs returned:", data);
+    console.log("Count:", data?.length);  
+
+    if (error) {
+      return res.status(500).json({
+        error: error.message
+      });
+    }
+
+    res.json({
+      success: true,
+      data
     });
-  }
-
-  res.json({
-    success: true,
-    data
   });
 
-});
+  // PATCH /api/programs/:id/toggle
+  router.patch("/:id/toggle", async (req, res) => {
 
-// POST /api/programs
-router.post("/", async (req, res) => {
+    const api_key =
+      req.headers["x-api-key"] ||
+      req.query.api_key;
 
-  const api_key =
-    req.headers["x-api-key"] ||
-    req.body.api_key;
+    const university_id =
+      await getUniversityId(api_key);
 
-  const university_id =
-    await getUniversityId(api_key);
+    if (!university_id) {
+      return res.status(401).json({
+        error: "Invalid university API key."
+      });
+    }
 
-  if (!university_id) {
-    return res.status(401).json({
-      error: "Invalid university API key."
+    const { id } = req.params;
+
+    const { data: programme, error: fetchError } =
+      await supabase
+        .from("programs")
+        .select("id, is_active")
+        .eq("id", id)
+        .eq("university_id", university_id)
+        .single();
+
+    if (fetchError || !programme) {
+      return res.status(404).json({
+        error: "Programme not found."
+      });
+    }
+
+    const { data, error } =
+      await supabase
+        .from("programs")
+        .update({
+          is_active: !programme.is_active
+        })
+        .eq("id", id)
+        .eq("university_id", university_id)
+        .select();
+
+    if (error) {
+      return res.status(500).json({
+        error: error.message
+      });
+    }
+
+    res.json({
+      success: true,
+      data
     });
-  }
 
-  const {
-    program_name,
-    degree,
-    apply_url
-  } = req.body;
+  });
 
-  const program_slug =
-    `${degree}-${program_name}`
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-|-$/g, "");
+  // POST /api/programs
+  router.post("/", async (req, res) => {
 
-  const { data, error } =
-    await supabase
+    const api_key =
+      req.headers["x-api-key"] ||
+      req.body.api_key;
+
+    const university_id =
+      await getUniversityId(api_key);
+
+    if (!university_id) {
+      return res.status(401).json({
+        error: "Invalid university API key."
+      });
+    }
+
+    const {
+      program_name,
+      degree,
+      apply_url
+    } = req.body;
+
+    const setup =
+      await evaluateProgrammeSetup(
+        program_name,
+        university_id
+      );
+    
+    if (setup.duplicate) {
+
+      return res.status(409).json({
+
+        success: false,
+
+        error:
+          "A programme with this name already exists."
+
+      });
+
+    }  
+
+    const program_slug =
+      `${degree}-${program_name}`
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "");
+
+    const { data, error } =
+      await supabase
+        .from("programs")
+        .insert([
+          {
+            university_id,
+            program_name,
+            degree,
+            apply_url,
+            program_slug,
+            is_active: setup.is_active,
+            setup_status: setup.setup_status
+          }
+        ])
+        .select()
+        .single();
+
+    if (error) {
+      return res.status(500).json({
+        error: error.message
+      });
+    }
+
+    res.json({
+      success: true,
+      data
+    });
+
+  });
+
+  // DELETE /api/programs/:id
+  router.delete("/:id", async (req, res) => {
+
+    const { id } = req.params;
+
+    const api_key =
+      req.headers["x-api-key"] ||
+      req.query.api_key;
+
+    const university_id =
+      await getUniversityId(api_key);
+
+    if (!university_id) {
+      return res.status(401).json({
+        error: "Invalid university API key."
+      });
+    }
+
+    const { error } = await supabase
       .from("programs")
-      .insert([
-        {
-          university_id,
-          program_name,
-          degree,
-          apply_url,
-          program_slug,
-          is_active: false
-        }
-      ])
-      .select()
-      .single();
+      .delete()
+      .eq("id", id)
+      .eq("university_id", university_id);
 
-  if (error) {
-    return res.status(500).json({
-      error: error.message
+    if (error) {
+      return res.status(500).json({
+        error: error.message
+      });
+    }
+
+    res.json({
+      success: true
     });
-  }
 
-  res.json({
-    success: true,
-    data
   });
-
-});
-
-// DELETE /api/programs/:id
-router.delete("/:id", async (req, res) => {
-
-  const { id } = req.params;
-
-  const api_key =
-    req.headers["x-api-key"] ||
-    req.query.api_key;
-
-  const university_id =
-    await getUniversityId(api_key);
-
-  if (!university_id) {
-    return res.status(401).json({
-      error: "Invalid university API key."
-    });
-  }
-
-  const { error } = await supabase
-    .from("programs")
-    .delete()
-    .eq("id", id)
-    .eq("university_id", university_id);
-
-  if (error) {
-    return res.status(500).json({
-      error: error.message
-    });
-  }
-
-  res.json({
-    success: true
-  });
-
-});
 
 module.exports = router;
